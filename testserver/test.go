@@ -1,15 +1,36 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"io/ioutil"
 	"log"
 	"net/http"
 
+	"github.com/haibeihabo/gomicrostudy/models"
+	"github.com/micro/go-micro/client"
 	"github.com/micro/go-micro/client/selector"
 	"github.com/micro/go-micro/registry"
-	"github.com/micro/go-plugins/registry/consul"
+	"github.com/micro/go-micro/registry/etcd"
+	myhttp "github.com/micro/go-plugins/client/http"
 )
+
+func callAPI2(s selector.Selector) {
+	myclient := myhttp.NewClient(
+		client.Selector(s),
+		client.ContentType("application/json"),
+	)
+
+	req := myclient.NewRequest("prodservice", "/v1/prods", models.ProdsRequest{Size: 3})
+
+	var rsp models.ProdListResponse
+	err := myclient.Call(context.Background(), req, &rsp)
+	if err != nil {
+		log.Println("-------")
+		log.Fatal(err)
+	}
+
+	log.Println(rsp.GetData())
+}
 
 func callAPI(addr string, path string, method string) (string, error) {
 	req, err := http.NewRequest(method, "http://"+addr+path, nil)
@@ -25,26 +46,14 @@ func callAPI(addr string, path string, method string) (string, error) {
 }
 
 func main() {
-	reg := consul.NewRegistry(
-		registry.Addrs("192.168.31.82:8500"),
+	reg := etcd.NewRegistry(
+		registry.Addrs("192.168.31.82:12379"),
 	)
 
-	getService, err := reg.GetService("prodservice")
-	if err != nil {
-		log.Fatal(err)
-	}
-	next := selector.RoundRobin(getService)
-	node, err := next()
-	if err != nil {
-		log.Fatal(err)
-	}
+	mySelector := selector.NewSelector(
+		selector.Registry(reg),
+		selector.SetStrategy(selector.RoundRobin),
+	)
 
-	fmt.Println(node.Id, node.Address, node.Metadata)
-
-	callRes, err := callAPI(node.Address, "/v1/prods", "GET")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println(callRes)
+	callAPI2(mySelector)
 }

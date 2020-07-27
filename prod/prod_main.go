@@ -24,10 +24,10 @@ func main() {
 
 	server := web.NewService(
 		web.Name("prodservice"),
-		web.Address(":9061"),
+		// web.Address(":9061"),
 		web.Handler(ginRouter),
 		web.Registry(reg),
 	)
-
+	server.Init()
 	server.Run()
 }

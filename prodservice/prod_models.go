@@ -3,8 +3,8 @@ package prodservice
 import "strconv"
 
 type ProdModel struct {
-	ProdID   int
-	ProdName string
+	ProdID   int    `json:"pid"`
+	ProdName string `json:pname`
 }
 
 func NewProd(id int, name string) *ProdModel {
